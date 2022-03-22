@@ -1,0 +1,204 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Configuration;
+using System.Data.SqlClient;
+
+
+namespace WinCRUDArch
+{
+    public partial class btnCount : Form
+    {
+        public btnCount()
+        {
+            InitializeComponent();
+        }
+
+        SqlCommand cmd = null;
+        SqlConnection cn = new SqlConnection("Data Source = TRGW42SLPC6240; Initial Catalog = Fresher2021Dec1; " +
+            "Integrated Security = True");
+        // SqlConnection connection =  new SqlConnection(ConfigurationManager.ConnectionStrings["conn"]
+        // .ToString());
+
+        public void DisplayDeptId()
+        {
+            using (cmd = new SqlCommand("select * from deptTable ", cn))
+            {
+                SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                DataSet ds = new DataSet();
+                adapter.Fill(ds,"DeptTable");
+                cmbDeptId.DataSource = ds.Tables["DeptTable"];
+                cmbDeptId.DisplayMember = "deptName";
+                cmbDeptId.ValueMember = "DeptId";
+            }
+        }
+        public void ShowData()
+        {
+
+            using (cmd = new SqlCommand("select * from tblEmployee", cn))
+            {
+                cn.Open();
+                SqlDataReader reader = cmd.ExecuteReader();
+               
+                DataTable table = new DataTable();
+                table.Load(reader);
+                dataGridView1.DataSource = table;
+                cmbDeptId.DataSource = table;
+                
+                reader.Close();
+                cn.Close();
+            }
+        }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            //SqlConnection connection = new SqlConnection(ConfigurationManager.ConnectionStrings["conn"].ToString());
+            // (connection = new SqlConnection(ConfigurationManager.ConnectionStrings["conn"]
+            // .ToString()))
+           // SqlCommand cmd = null;
+           ShowData();
+            DisplayDeptId();
+
+
+        }
+
+        private void btnInsert_Click(object sender, EventArgs e)
+        {
+            cn.Open();
+            //using text box to insert dept ID
+            // cmd = new SqlCommand("insert into tblEmployee values('"+txtEname.Text+"',"+""+Convert.ToDouble(txtSal.Text)+"" +
+            //"," + Convert.ToInt32(txtDeptId.Text )+ ")", cn);
+
+            //using combobox to accept dept id
+            cmd = new SqlCommand("insert into tblEmployee values('" + txtEname.Text + "'," + "" + Convert.ToDouble(txtSal.Text) + "," 
+             + Convert.ToInt32(cmbDeptId.SelectedValue)+ ")", cn);
+
+            int i =cmd.ExecuteNonQuery();
+            if (i > 0)
+                MessageBox.Show("One row added to the tblEmployee with concatenation");
+            cn.Close();
+            ShowData();
+            DisplayDeptId();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnUptPara_Click(object sender, EventArgs e)
+        {
+            //update tblempl set ename='abc', esal=345 where empid=1
+            cmd = new SqlCommand("update tblEmployee set EmpName=@ename,EmpSalary=@esal,DeptNo=@dno " +
+                "where EmpId=@eid", cn);
+            cn.Open();
+            cmd.Parameters.Add("@ename",SqlDbType.VarChar, 30).Value=txtEname.Text;
+            cmd.Parameters.Add("@esal",SqlDbType.Decimal).Value=Convert.ToDouble(txtSal.Text);
+            cmd.Parameters.Add("@eid",SqlDbType.Int).Value = Convert.ToInt32(txtStaffId.Text);
+            cmd.Parameters.Add("@dno",SqlDbType.Int).Value=Convert.ToInt32(cmbDeptId.SelectedValue);
+
+            if(cmd.ExecuteNonQuery()>0)
+            {
+                MessageBox.Show("One row updated with parameter");
+            }
+            else
+            {
+                MessageBox.Show("Error while update the row");
+            }
+            cn.Close();
+            ShowData();
+
+        }
+
+        private void btnDelSp_Click(object sender, EventArgs e)
+        {
+            cmd = new SqlCommand("SP_DeleteEmp ",cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.Add("@eid", SqlDbType.Int).Value = Convert.ToInt32(txtStaffId.Text);
+            cn.Open();
+            if (cmd.ExecuteNonQuery() > 0)
+            {
+                MessageBox.Show("One row deleted with stored procedure");
+            }
+            else
+            {
+                MessageBox.Show("Error while delete the row");
+            }
+            cn.Close();
+            ShowData();
+
+
+        }
+
+        private void btnWithSp_Click(object sender, EventArgs e)
+        {
+            cn.Open();
+            cmd = new SqlCommand("SP_UpdateEmp", cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.Add("@ename", SqlDbType.VarChar, 30).Value = txtEname.Text;
+            cmd.Parameters.Add("@esal", SqlDbType.Decimal).Value = Convert.ToDouble(txtSal.Text);
+            cmd.Parameters.Add("@eid", SqlDbType.Int).Value = Convert.ToInt32(txtStaffId.Text);
+            cmd.Parameters.Add("@dno", SqlDbType.Int).Value = Convert.ToInt32(cmbDeptId.SelectedValue);
+            
+            if (cmd.ExecuteNonQuery() > 0)
+            {
+                MessageBox.Show("One row updated with stored procedure");
+            }
+            else
+            {
+                MessageBox.Show("Error while update the row");
+            }
+            cn.Close();
+            ShowData();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            using(cmd = new SqlCommand("SP_GetEmpCount",cn))
+            {
+                cn.Open();
+                cmd.CommandType= CommandType.StoredProcedure;
+                cmd.Parameters.Add("@empCount", SqlDbType.Int);
+                cmd.Parameters["@empCount"].Direction =ParameterDirection.Output;
+                cmd.ExecuteScalar();
+                var count = cmd.Parameters["@empCount"].Value;
+                lblCount.Text = count.ToString();
+                cn.Close();
+            }
+        }
+
+        private void btnDisData_Click(object sender, EventArgs e)
+        {
+            using(cmd=new SqlCommand("SP_DisplayEmpDetails",cn))
+            {
+                cn.Open();
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add("@empid", SqlDbType.Int).Value=txtStaffId.Text ;
+                SqlDataReader dr = cmd.ExecuteReader();
+                //while (dr.Read())
+                //{
+                    if (dr.Read())
+                    {
+                        txtEname.Text = dr["EmpName"].ToString();
+                        txtSal.Text = dr["EmpSalary"].ToString();
+                        txtDeptId.Text = dr["deptNo"].ToString();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Please enter correct Employee ID");
+                    }
+               // }
+                dr.Close();
+                cn.Close();
+                        
+
+
+            }
+        }
+    }
+}
